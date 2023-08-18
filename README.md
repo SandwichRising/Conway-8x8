@@ -63,7 +63,7 @@ The display was tested by streaming data from an Arduino (with a 328P processor)
 ![testing the circuit](./media/circuit_test.png "Testing the Full Display")
 
 Once all testing was complete, a standalone 328P was flashed with the program (using the internal oscillator) and the circuit was attached to the housing with screws. The view from the rear while its running is still my favorite.
-![circuit running and viewed from behind](./media/illuminated_back_side.jpg "Viewing the Display from Behind")
+![circuit running and viewed from behind](./media/illuminated_backside.jpg "Viewing the Display from Behind")
 
 If you’ve made it this far, extra thanks for taking a look! If you make one, be sure to let me know!
 

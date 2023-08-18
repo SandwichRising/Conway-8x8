@@ -17,7 +17,7 @@ const int PIN_CLOCK = 12; // using SPI port to increase transmit speed
 const int PIN_LATCH = 8;
 const int PIN_RANDOMSEED = A5; // unused analog pin left floating to generate seed on powerup
 const int qty595 = 8; //how many 595 chips in use //Math.ceil((columns*cellsPerColumn)/8);
-// options pins
+// options pins - physical switches may be added to these pins to set different modes if connected to GND
 const int PIN_OPTION1 = A0;  // adds 1500ms to evolutionDelay
 const int PIN_OPTION2 = A1;  // glider mode - lowers history count to preserve gliders
 const int PIN_OPTION3 = A2;  // suppress data out (for demonstrating serial comms to the display manually) 
@@ -39,7 +39,7 @@ int ledIntensity[columns][cellsPerColumn]; // tracks relative brightness of each
 int ledAdjuster[columns][cellsPerColumn];  // used to modify ledIntensity
 int ledMax = 9; // 9 = smooth. higher numbers (99) can provide glitching effect to transitions
 int intensitySteps = 55;   // ms between changing intensity levels
-byte ledContainer[qty595]; // stores 8bit representation of the board to shiftOut()
+byte ledContainer[qty595]; // stores 8 bits of the board at a time to shiftOut()
 const byte blankContainer[5] = {0,0,0,0,0};
 const int ledMin = 0;
 
@@ -59,13 +59,12 @@ int frameCounter = 1;
 // debug vars
 unsigned int debugTimer = 0;
 unsigned long cps = 0; // program cycles per second
-bool testBoard[][6] = {{1,1,0,0,1,1},{1,0,0,0,0,1},{0,0,0,0,0,0},{0,0,0,0,0,0},{1,0,0,0,0,1},{1,1,0,0,1,1}};
 
 
 // GAME BOARD/HISTORY HELPER FUNCTIONS
 boolean readGrid(int row, int rowIndex) {  // reads out grid y x as bool, zero indexed
 
-  //convert 2d request into 1d array of bytes bitshifted to have request on MSB
+  //convert 2d request into 1d array of bytes bitshifted to have request placed on MSB
   byte examine = grid[(((row * cellsPerColumn) + rowIndex) / 8)]; //extract byte containing cell
   examine = examine << 7 - (((row * cellsPerColumn) + rowIndex) % 8);  //move bit to MSB
   return (examine >> 7); //return MSB bit as bool
@@ -74,14 +73,14 @@ boolean readGrid(int row, int rowIndex) {  // reads out grid y x as bool, zero i
 
 void writeGrid(int row, int rowIndex, bool writeValue) {  // writes to grid, zero indexed
 
-  //convert 2d request into 1d array of bytes and set or clear
+  //convert 2d request into 1d array of bytes to set or clear a location
   if (writeValue) bitSet(grid[(((row * cellsPerColumn) + rowIndex) / 8)], (((row * cellsPerColumn) + rowIndex) % 8));
   else bitClear(grid[(((row * cellsPerColumn) + rowIndex) / 8)], (((row * cellsPerColumn) + rowIndex) % 8));
 }
 
-boolean readTemp(int row, int rowIndex) {  // writes to grid, zero indexed
+boolean readTemp(int row, int rowIndex) {  // reads grid, zero indexed
 
-  //convert 2d request into 1d array of bytes bitshifted to have request on MSB
+  //convert 2d request into 1d array of bytes bitshifted to have request placed on MSB
   byte examine = tempgrid[(((row * cellsPerColumn) + rowIndex) / 8)]; //extract byte containing cell
   examine = examine << 7 - (((row * cellsPerColumn) + rowIndex) % 8);  //move bit to MSB
   return (examine >> 7); //return MSB bit as bool
@@ -89,22 +88,22 @@ boolean readTemp(int row, int rowIndex) {  // writes to grid, zero indexed
 
 void writeTemp(int row, int rowIndex, bool writeValue) {  // writes to grid, zero indexed
 
-  //convert 2d request into 1d array of bytes and set or clear
+  //convert 2d request into 1d array of bytes and sets or clears location
   if (writeValue) bitSet(tempgrid[(((row * cellsPerColumn) + rowIndex) / 8)], (((row * cellsPerColumn) + rowIndex) % 8));
   else bitClear(tempgrid[(((row * cellsPerColumn) + rowIndex) / 8)], (((row * cellsPerColumn) + rowIndex) % 8));
 }
 
 boolean readHistory(int histNum, int row, int rowIndex) {  // reads out grid y x as bool, zero indexed
 
-  //convert 2d request into 1d array of bytes bitshifted to have request on MSB
+  //convert 2d request into 1d array of bytes bitshifted to have request placed on MSB
   byte examine = gridHistory[histNum][(((row * cellsPerColumn) + rowIndex) / 8)]; //extract byte containing cell
   examine = examine << 7 - (((row * cellsPerColumn) + rowIndex) % 8);  //move bit to MSB
   return (examine >> 7); //return MSB bit as bool
   
 }
 
-//obsoleting with byte-size function
-void writeHistory(int histNum, int row, int rowIndex, bool writeValue) {  // writes to grid, zero indexed
+
+void writeHistory(int histNum, int row, int rowIndex, bool writeValue) {  // writes single bit to history grid, zero indexed
 
   //convert 2d request into 1d array of bytes and set or clear
   if (writeValue) bitSet(gridHistory[histNum][(((row * cellsPerColumn) + rowIndex) / 8)], (((row * cellsPerColumn) + rowIndex) % 8));
@@ -112,7 +111,7 @@ void writeHistory(int histNum, int row, int rowIndex, bool writeValue) {  // wri
 }
 
 
-void writeHistoryBytes(int histNum, bool gridCopy) {  //grid copy TRUE = copy from grid, FALSE = copy from history
+void writeHistoryBytes(int histNum, bool gridCopy) {  //grid copy TRUE = copy from grid, FALSE = copy from previous history
 
   for (int i = 0; i < bytesPerGrid; i++) {
 
@@ -126,13 +125,13 @@ void writeHistoryBytes(int histNum, bool gridCopy) {  //grid copy TRUE = copy fr
 // SETUP
 void setup() {
 
-  // debug
-  Serial.begin(9600);
+  // debug - used to display gameboard and debug info over serial
+  //Serial.begin(9600);
 
   // re-seed rng
   randomSeed(generateSeedNumber());
 
-  // initialize output pind
+  // initialize output pins
   int outputPins[] = {PIN_DATA, PIN_CLOCK, PIN_LATCH};
   for (int i = 0; i < sizeof(outputPins); i++) {
     pinMode(outputPins[i], OUTPUT);
@@ -146,7 +145,7 @@ void setup() {
   } 
   if (optionsContainer[0]) evolutionDelay += 1500;
 
-  //debug test screen
+  //debug test screen - set screen to flash using software instead of physical switch
   //optionsContainer[3] = 1;
   
   fillGameBoard(false);
@@ -212,7 +211,6 @@ void fillGameBoardHistory() {
   for (int h = 0; h < historyMax; h++) {
     for (int i = 0; i < columns; i++) {
       for (int j = 0; j < cellsPerColumn; j++) {
-        //gameBoardHistory[h][i][j] = 0;
         writeHistory(h,i,j,0);
       }
     }
@@ -226,26 +224,18 @@ void fillGameBoardHistory() {
 // applies Conway ruleset to gameBoard
 void cycleEvolution(){
   
-    //Serial.println("1");
-    // helper
-    //randomTemp = false;
-
+    // FIXME - code still running using inefficient boolean tempContainer instead of efficient tempgrid usage
    bool tempContainer[columns][cellsPerColumn];
     
-    if(currentMillis - runTimer > 500 && runCalculator) { //half second delay
-      
-      Serial.println("Debug Check");
+    if((currentMillis - runTimer > 500) && runCalculator) { // half second delay between runs, along with flag
       
       if (checkAndUpdateBoardHistory()) {  // board history (and blank board) check
         
-    //Serial.println("3");
-        // Evolve
+        // If check passes, perform Evolution Cycle
   
         glowStyle(NORMAL);
   
-        //bool tempContainer[columns][cellsPerColumn];
-  
-        const int neighborOffset[8][2] = {{-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}};
+        const int neighborOffset[8][2] = {{-1,-1},{-1,0},{-1,1},{0,-1},{0,1},{1,-1},{1,0},{1,1}}; // x,y locations to check
         
         // cycle thru all locations to count how many neighbors each one has, then update cells
         for (int currentColumn = 0; currentColumn < columns; currentColumn++) {
@@ -271,10 +261,10 @@ void cycleEvolution(){
   
   
   
-            // if cell's space started dead....
+            // if cell's location is alive....
             if (readGrid(currentColumn, currentCell)) {
   
-              // if underpopulated or overpopulated, mark square dead, otherwise mark alive
+              // if underpopulated or overpopulated, mark cell dead, otherwise mark alive
               if (totalNeighbors < 2 || totalNeighbors > 3) {
                 tempContainer[currentColumn][currentCell] = false;
                 //writeTemp(currentColumn,currentCell,false);
@@ -282,17 +272,17 @@ void cycleEvolution(){
               else tempContainer[currentColumn][currentCell] = true;
               //else writeTemp(currentColumn,currentCell,true);
   
-            // else if cell square started dead....
+            // else if cell location started dead....
             } else {
               
-              // if 3 neighbors are alive, come alive
+              // if exacty 3 neighbors are alive, come alive
               if (totalNeighbors == 3) tempContainer[currentColumn][currentCell] = true;
               //if (totalNeighbors == 3) writeTemp(currentColumn,currentCell,true);
             }
           }
         }
   
-      runCalculator = false;
+      runCalculator = false;  // prevent running evolution again until after board updates 
       runTimer = currentMillis;
   
       }
@@ -328,10 +318,10 @@ void cycleEvolution(){
       } else randomizeGameBoard();
       
       //debug
-      displayDebug();
-      printGameBoard();
-      //printLedAdjuster();
-      //printLedIntensity();
+      //displayDebug();       //display debug info over serial
+      //printGameBoard();   //display gameboard over serial connection
+      //printLedAdjuster(); //more debug serial info
+      //printLedIntensity(); //more debug serial info
 
       runCalculator = true;
     }
@@ -339,7 +329,7 @@ void cycleEvolution(){
 }
 
 
-// handles empty gameBoards, as well as gameboards with gliders
+// handles empty gameBoards, as well as gameboards with gliders and history repeats
 bool checkAndUpdateBoardHistory(){
 
   bool proceedNormallyFlag = true;
@@ -369,12 +359,10 @@ bool checkAndUpdateBoardHistory(){
       for (int i = 0; i < columns; i++) {
         for (int j = 0; j < cellsPerColumn; j++) {
           // check for difference in gameBoard vs history
-          //if (gameBoard[i][j] != gameBoardHistory[h][i][j]) {
           if (readGrid(i, j) != readHistory(h,i,j)) {
             resetFlag = false;
           }
 
-          
           // bump history
           writeHistory((h-1),i,j,readHistory(h,i,j));
           // put gameboard in history
@@ -477,7 +465,7 @@ void displayGameBoard() {
 
   incrementIntensity();
   
-  //prep unused 595 locations in ledContainer
+  //prep unused 595 locations in ledContainer (for gameboard sizes that aren't divisible by 8)
   int unused595pins = (columns*cellsPerColumn) % 8;
   for (int i = 0; i < unused595pins; i++) fillLedContainerBit(i, 0);
 
@@ -497,6 +485,7 @@ void displayGameBoard() {
         // applies dimmer to brighter leds. saves ~%50 power and only lowers perceived brightness a little
         if (frameCounter % 2 == 0 && (frameCounter % 10 > 4 || ledIntensity[i][j] > 7)) {;} //ledIntensity[i][j] > 7) {;}  // % 1: normal    % 2: half overall brightness
         
+        //FIXME dimmer currently unused, no power savings
         //else fillBit = true; 
         fillBit = true; 
       }
@@ -532,15 +521,17 @@ void incrementIntensity() {
 
       for (int j = 0; j < cellsPerColumn; j++) {
 
+          // adjust intensity and stop adjustment when limits are reached
           ledIntensity[i][j] += ledAdjuster[i][j];
           if (ledIntensity[i][j] == ledMax || ledIntensity[i][j] == ledMin) ledAdjuster[i][j] = ledMin;
+          
+          //rollover protection
           else if (ledIntensity[i][j] > ledMax) {
             ledIntensity[i][j] = ledMax;
-            //ledAdjuster[i][j] *= -1;
 
+          //rollover protection
           } else if (ledIntensity[i][j] < ledMin) {
             ledIntensity[i][j] = ledMin;
-            //ledAdjuster[i][j] *= -1;
           }
       }
     }
@@ -566,7 +557,6 @@ void setLatch(bool setting) {
   digitalWrite(PIN_LATCH, setting);
 
 }
-
 
 
 

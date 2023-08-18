@@ -31,7 +31,7 @@ After developing the software, the circuits were drawn in KiCad (v5.1.9) to find
 ![kicad](./media/kicad.png "KiCad desktop view")
 
 Once the circuits were designed and sized, the wooden housing was modeled in Fusion360 and the back of the housing was cut. Wooden pillars were used to place the wood stock precisely on the CNC bed, as the board would need flipped on the next step, and the pillars allowed for exact X and Y axis alignment. Before cutting, a small amount of polyurethane was sprayed where the text engraving would be. After cutting, this engraving area was taped off and sprayed with black spray paint. After drying, sanding the area removes the excess paint and leaves the engraved text painted.
-![rear housing](./media/life_pic.jpg "Cutting Rear Housing")
+![cutting rear housing](./media/cutting_rear.jpg "Cutting Rear Housing")
 
 The wooden board was then flipped, aligned to the bed’s peg holes, and front was then cut. The front used different bits to create the wavy pattern, cut away bulk material, and drill the LED holes. The same spray paint technique from before was used to fill the LIFE lettering with black paint (green epoxy was added later).
 ![front housing](./media/cutting_wood1.jpg "Cutting Waves")
